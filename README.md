@@ -43,6 +43,24 @@ We present **Enterprise Deep Research (EDR)**, a multi-agent system that integra
 
 ![Architecture Overview](./assets/edr_ppl.png)
 
+## ✨ New: Gradio 6 Interface
+
+Enterprise Deep Research now includes a **modern Gradio 6 interface** for easy access to all features:
+
+```bash
+python gradio_app.py
+```
+
+**Quick Start Benefits:**
+- 🚀 Launch in seconds - no frontend build required
+- 🎨 Beautiful, intuitive interface
+- 📱 Responsive design works on desktop and mobile
+- ⚙️ Configure providers, models, and research depth on-the-fly
+- 📎 Upload files directly for analysis
+- 📊 View formatted research reports with sources
+
+Access at [http://localhost:7860](http://localhost:7860) after running the command above.
+
 ## 🎥 Demo
 
 We present a video demo of using EDR in web application for enterprise deep data analysis. 
@@ -117,7 +135,13 @@ See [Local Setup Guide](LOCAL_SETUP.md) for detailed instructions.
 
 ### Running the Application
 
-**Full Stack (Recommended) - Single Command:**
+**Option 1: Gradio Interface (Recommended for Quick Start):**
+```bash
+python gradio_app.py
+```
+Access the modern, user-friendly interface at [http://localhost:7860](http://localhost:7860)
+
+**Option 2: Full Stack (React Frontend + Backend):**
 ```bash
 python -m uvicorn app:app --host 0.0.0.0 --port 8000
 ```
@@ -127,14 +151,37 @@ The application will serve both the backend API and pre-built frontend at [http:
 
 ## 💻 Usage
 
+### Gradio Interface (New! ✨)
+
+The **Gradio 6** interface provides an intuitive, modern way to use Enterprise Deep Research:
+
+```bash
+python gradio_app.py
+```
+
+**Features:**
+- 🎨 **Modern UI**: Clean, responsive interface built with Gradio 6
+- 🔬 **Deep Research**: Enter queries and get comprehensive research reports
+- 📎 **File Upload**: Upload documents to include in your research context
+- ⚙️ **Flexible Configuration**: Choose providers, models, and research depth
+- 🎯 **Real-time Steering**: Guide research with human-in-the-loop feedback
+- 📊 **Visual Results**: View formatted reports with sources and citations
+- 💾 **Export Reports**: Download research results as markdown files
+
+The Gradio interface is perfect for:
+- Quick research tasks without setting up the full frontend
+- Interactive exploration of research capabilities
+- Demonstrations and presentations
+- Local deployment scenarios
+
 ### Command Line
 ```bash
 python benchmarks/run_research.py "Your research question" \
   --provider openai --model o3-mini --max-loops 3
 ```
 
-### Web Interface
-Navigate to [http://localhost:8000](http://localhost:8000) for interactive research with real-time progress tracking.
+### React Web Interface
+Navigate to [http://localhost:8000](http://localhost:8000) for the full-featured React interface with real-time progress tracking.
 
 ## 📚 Benchmarking & Development
 
