@@ -182,28 +182,7 @@ def format_research_output(report: str, sources: str, status: str) -> str:
 def create_gradio_interface():
     """Create the main Gradio interface."""
     
-    # Custom CSS for better styling
-    custom_css = """
-    .gradio-container {
-        max-width: 1400px !important;
-    }
-    .header-text {
-        text-align: center;
-        padding: 20px;
-    }
-    .output-box {
-        min-height: 400px;
-    }
-    """
-    
-    with gr.Blocks(
-        title="Enterprise Deep Research",
-        theme=gr.themes.Soft(
-            primary_hue="blue",
-            secondary_hue="slate",
-        ),
-        css=custom_css
-    ) as demo:
+    with gr.Blocks(title="Enterprise Deep Research") as demo:
         
         # Header
         gr.Markdown(
@@ -615,12 +594,34 @@ def main():
     
     # Create and launch the interface
     demo = create_gradio_interface()
+    
+    # Define custom theme and CSS for Gradio 6
+    custom_theme = gr.themes.Soft(
+        primary_hue="blue",
+        secondary_hue="slate",
+    )
+    
+    custom_css = """
+    .gradio-container {
+        max-width: 1400px !important;
+    }
+    .header-text {
+        text-align: center;
+        padding: 20px;
+    }
+    .output-box {
+        min-height: 400px;
+    }
+    """
+    
     demo.launch(
         server_name="0.0.0.0",
         server_port=7860,
         share=False,
         show_error=True,
-        quiet=False
+        quiet=False,
+        theme=custom_theme,
+        css=custom_css
     )
 
 
