@@ -1187,9 +1187,11 @@ def get_llm_client(provider, model_name=None):
             model_name=model_name,
         )
     elif provider == "openai":
-        if not OPENAI_API_KEY:
-            raise ValueError("OPENAI_API_KEY is not set in environment")
-        api_key = OPENAI_API_KEY
+        # Support local OpenAI-compatible endpoints (e.g., Ollama, vLLM)
+        # Allow dummy API key for local endpoints that don't require authentication
+        api_key = OPENAI_API_KEY or os.getenv("OPENAI_API_KEY", "dummy-key")
+        base_url = os.getenv("OPENAI_BASE_URL")  # Optional: point to local endpoint
+        
         if not model_name:
             model_name = MODEL_CONFIGS["openai"]["default_model"]
 
@@ -1216,14 +1218,20 @@ def get_llm_client(provider, model_name=None):
         else:
             # Use standard ChatOpenAI for other models
             print(f"Using standard ChatOpenAI for requested model: {model_name}")
-            return ChatOpenAI(
-                model_name=model_name.replace(
-                    "-reasoning", ""
-                ),  # Use base model name if reasoning specified
-                api_key=api_key,
-                max_tokens=OPENAI_MAX_TOKENS,  # Using variable instead of hardcoded value
-                streaming=False,
-            )
+            client_params = {
+                "model_name": model_name.replace("-reasoning", ""),  # Use base model name if reasoning specified
+                "api_key": api_key,
+                "max_tokens": OPENAI_MAX_TOKENS,
+                "streaming": False,
+                "temperature": 0,  # Deterministic behavior for agents
+            }
+            
+            # Add base_url if specified (for local endpoints like Ollama)
+            if base_url:
+                client_params["base_url"] = base_url
+                print(f"Using local OpenAI-compatible endpoint: {base_url}")
+            
+            return ChatOpenAI(**client_params)
 
     # For Salesforce Research Gateway models
     elif provider == "sfrgateway":
@@ -1345,9 +1353,9 @@ async def get_async_llm_client(provider, model_name=None):
         )
 
     if provider == "openai":
-        if not OPENAI_API_KEY:
-            raise ValueError("OPENAI_API_KEY is not set in environment")
-        api_key = OPENAI_API_KEY
+        # Support local OpenAI-compatible endpoints (e.g., Ollama, vLLM)
+        api_key = OPENAI_API_KEY or os.getenv("OPENAI_API_KEY", "dummy-key")
+        base_url = os.getenv("OPENAI_BASE_URL")  # Optional: point to local endpoint
 
         # Always use standard ChatOpenAI async client
         # Strip -reasoning suffix if present, and handle o4-mini-high
@@ -1359,12 +1367,20 @@ async def get_async_llm_client(provider, model_name=None):
             f"[get_async_llm_client] Creating async ChatOpenAI client with model {effective_model_name}"
         )
 
-        return ChatOpenAI(
-            model_name=effective_model_name,
-            api_key=api_key,
-            max_tokens=OPENAI_MAX_TOKENS,  # Using variable instead of hardcoded value
-            streaming=False,  # Keep false unless streaming needed in async context
-        )
+        client_params = {
+            "model_name": effective_model_name,
+            "api_key": api_key,
+            "max_tokens": OPENAI_MAX_TOKENS,
+            "streaming": False,
+            "temperature": 0,  # Deterministic behavior for agents
+        }
+        
+        # Add base_url if specified (for local endpoints like Ollama)
+        if base_url:
+            client_params["base_url"] = base_url
+            logger.info(f"[get_async_llm_client] Using local OpenAI-compatible endpoint: {base_url}")
+        
+        return ChatOpenAI(**client_params)
     elif provider == "anthropic":
         if not ANTHROPIC_API_KEY:
             raise ValueError("ANTHROPIC_API_KEY is not set in environment")

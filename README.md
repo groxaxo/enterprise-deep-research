@@ -57,6 +57,9 @@ We present a video demo of using EDR in web application for enterprise deep data
 
 **Requirements**: Python 3.11+ • Node.js 20.9.0+
 
+> [!Note]
+> **Running Locally?** Check out our [**Local Setup Guide**](LOCAL_SETUP.md) for instructions on running Enterprise Deep Research entirely locally using Ollama or vLLM with no external telemetry.
+
 ### Installation & Setup
 
 ```bash
@@ -93,6 +96,14 @@ cd ai-research-assistant && npm install && npm run build && cd ..
 - `LLM_MODEL` - Model name (provider-specific defaults)
 - `MAX_WEB_RESEARCH_LOOPS` - Max iterations (default: `10`)
 
+**Local LLM Configuration (Ollama, vLLM, etc.):**
+- `OPENAI_BASE_URL` - Set to local endpoint (e.g., `http://localhost:11434/v1` for Ollama)
+- `OPENAI_API_KEY` - Can be set to `dummy-key` for local endpoints
+- `LANGCHAIN_TRACING_V2` - Set to `false` to disable telemetry (default: `false`)
+- `OTEL_SDK_DISABLED` - Set to `true` to disable OpenTelemetry (default: `true`)
+
+See [Local Setup Guide](LOCAL_SETUP.md) for detailed instructions.
+
 ### Supported Models
 
 | Provider | Default Model | Available Models |
@@ -102,6 +113,7 @@ cd ai-research-assistant && npm install && npm run build && cd ..
 | **Google** | `gemini-2.5-pro` | `gemini-2.5-pro`, `gemini-1.5-pro-latest`, `gemini-1.5-flash-latest` |
 | **Groq** | `deepseek-r1-distill-llama-70b` | `deepseek-r1-distill-llama-70b`, `llama-3.3-70b-versatile`, `llama3-70b-8192` |
 | **SambaNova** | `DeepSeek-V3-0324` | `DeepSeek-V3-0324` |
+| **Local (Ollama/vLLM)** | *User-defined* | Any OpenAI-compatible model (e.g., `llama3.1:8b`, `qwen2.5:14b`, `mistral:7b`) |
 
 ### Running the Application
 
