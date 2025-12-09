@@ -61,6 +61,8 @@ python gradio_app.py
 
 Access at [http://localhost:7860](http://localhost:7860) after running the command above.
 
+📖 **[See the complete Gradio Interface Guide](GRADIO_GUIDE.md)** for detailed usage instructions, configuration options, and troubleshooting tips.
+
 ## 🎥 Demo
 
 We present a video demo of using EDR in web application for enterprise deep data analysis. 
