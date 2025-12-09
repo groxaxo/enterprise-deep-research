@@ -1189,8 +1189,10 @@ def get_llm_client(provider, model_name=None):
     elif provider == "openai":
         # Support local OpenAI-compatible endpoints (e.g., Ollama, vLLM)
         # Allow dummy API key for local endpoints that don't require authentication
-        api_key = OPENAI_API_KEY or os.getenv("OPENAI_API_KEY", "dummy-key")
+        api_key = OPENAI_API_KEY or "dummy-key"
         base_url = os.getenv("OPENAI_BASE_URL")  # Optional: point to local endpoint
+        # Allow configurable temperature (default 0 for deterministic agent behavior)
+        temperature = float(os.getenv("OPENAI_TEMPERATURE", "0"))
         
         if not model_name:
             model_name = MODEL_CONFIGS["openai"]["default_model"]
@@ -1223,7 +1225,7 @@ def get_llm_client(provider, model_name=None):
                 "api_key": api_key,
                 "max_tokens": OPENAI_MAX_TOKENS,
                 "streaming": False,
-                "temperature": 0,  # Deterministic behavior for agents
+                "temperature": temperature,  # Configurable via OPENAI_TEMPERATURE (default: 0)
             }
             
             # Add base_url if specified (for local endpoints like Ollama)
@@ -1354,8 +1356,10 @@ async def get_async_llm_client(provider, model_name=None):
 
     if provider == "openai":
         # Support local OpenAI-compatible endpoints (e.g., Ollama, vLLM)
-        api_key = OPENAI_API_KEY or os.getenv("OPENAI_API_KEY", "dummy-key")
+        api_key = OPENAI_API_KEY or "dummy-key"
         base_url = os.getenv("OPENAI_BASE_URL")  # Optional: point to local endpoint
+        # Allow configurable temperature (default 0 for deterministic agent behavior)
+        temperature = float(os.getenv("OPENAI_TEMPERATURE", "0"))
 
         # Always use standard ChatOpenAI async client
         # Strip -reasoning suffix if present, and handle o4-mini-high
@@ -1372,7 +1376,7 @@ async def get_async_llm_client(provider, model_name=None):
             "api_key": api_key,
             "max_tokens": OPENAI_MAX_TOKENS,
             "streaming": False,
-            "temperature": 0,  # Deterministic behavior for agents
+            "temperature": temperature,  # Configurable via OPENAI_TEMPERATURE (default: 0)
         }
         
         # Add base_url if specified (for local endpoints like Ollama)
