@@ -120,18 +120,6 @@ async def conduct_research(
         
         progress(0.3, desc="Starting deep research...")
         
-        # Create research request
-        research_request = ResearchRequest(
-            query=query,
-            extra_effort=extra_effort,
-            minimum_effort=minimum_effort,
-            streaming=False,
-            provider=provider,
-            model=model,
-            uploaded_data_content=uploaded_data_content,
-            steering_enabled=enable_steering
-        )
-        
         # Conduct research
         result = await ResearchService.conduct_research(
             query=query,
@@ -330,7 +318,20 @@ def create_gradio_interface():
                 
                 def run_research_wrapper(*args):
                     """Wrapper to run async research function."""
-                    return asyncio.run(conduct_research(*args))
+                    try:
+                        # Try to get the current event loop
+                        loop = asyncio.get_event_loop()
+                        if loop.is_running():
+                            # If we're already in an async context, create a new loop
+                            import concurrent.futures
+                            with concurrent.futures.ThreadPoolExecutor() as executor:
+                                future = executor.submit(asyncio.run, conduct_research(*args))
+                                return future.result()
+                        else:
+                            return loop.run_until_complete(conduct_research(*args))
+                    except RuntimeError:
+                        # No event loop exists, create one
+                        return asyncio.run(conduct_research(*args))
                 
                 research_btn.click(
                     fn=run_research_wrapper,
@@ -428,7 +429,7 @@ def create_gradio_interface():
                     | Anthropic | claude-sonnet-4 | ANTHROPIC_API_KEY |
                     | Google | gemini-2.5-pro | GOOGLE_CLOUD_PROJECT |
                     | Groq | deepseek-r1-distill-llama-70b | GROQ_API_KEY |
-                    | SambaNova | DeepSeek-V3-0324 | SAMBNOVA_API_KEY |
+                    | SambaNova | DeepSeek-V3-0324 | SAMBANOVA_API_KEY |
                     | Local (Ollama/vLLM) | User-defined | OPENAI_BASE_URL |
                     
                     ### Environment Variables
@@ -580,7 +581,7 @@ def main():
         "anthropic": "ANTHROPIC_API_KEY",
         "google": "GOOGLE_CLOUD_PROJECT",
         "groq": "GROQ_API_KEY",
-        "sambanova": "SAMBNOVA_API_KEY",
+        "sambanova": "SAMBANOVA_API_KEY",
     }
     
     if LLM_PROVIDER in provider_key_map:
