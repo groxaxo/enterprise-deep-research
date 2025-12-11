@@ -111,7 +111,8 @@ def fetch_models_from_endpoint(base_url: str, api_key: str = "dummy-key") -> Tup
     except requests.exceptions.ConnectionError:
         return [], "❌ Connection failed - check if endpoint URL is correct"
     except requests.exceptions.HTTPError as e:
-        return [], f"❌ HTTP Error: {e.response.status_code}"
+        status_code = e.response.status_code if hasattr(e, 'response') and e.response else "Unknown"
+        return [], f"❌ HTTP Error: {status_code}"
     except Exception as e:
         logger.error(f"Error fetching models: {e}", exc_info=True)
         return [], f"❌ Error: {str(e)}"
@@ -411,9 +412,9 @@ def create_gradio_interface():
                     # Show/hide custom endpoint configuration
                     show_custom = provider == "custom"
                     if models:
-                        return gr.Dropdown(choices=models, value=models[0] if models else ""), gr.Group(visible=show_custom)
+                        return gr.Dropdown(choices=models, value=models[0]), gr.Group(visible=show_custom)
                     else:
-                        return gr.Dropdown(choices=["No models available"], value=""), gr.Group(visible=show_custom)
+                        return gr.Dropdown(choices=["No models available"]), gr.Group(visible=show_custom)
                 
                 provider_dropdown.change(
                     fn=update_models,
@@ -422,14 +423,20 @@ def create_gradio_interface():
                 )
                 
                 def fetch_custom_models(endpoint, api_key):
-                    """Fetch models from custom endpoint and update the model dropdown."""
+                    """
+                    Fetch models from custom endpoint and update the model dropdown.
+                    
+                    Note: This modifies the global PROVIDERS dict. For single-user Gradio
+                    interfaces, this is acceptable. For multi-user deployments, consider
+                    using session-based state management.
+                    """
                     if not endpoint:
                         return gr.Dropdown(choices=["No models available"], value=""), "❌ Please enter an endpoint URL"
                     
                     models, status = fetch_models_from_endpoint(endpoint, api_key)
                     
                     if models:
-                        # Update the global PROVIDERS dict
+                        # Update the global PROVIDERS dict for this session
                         PROVIDERS["custom"] = models
                         return gr.Dropdown(choices=models, value=models[0]), status
                     else:
