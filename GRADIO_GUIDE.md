@@ -74,6 +74,148 @@ OTEL_SDK_DISABLED=true
 
 See [LOCAL_SETUP.md](LOCAL_SETUP.md) for detailed local deployment instructions.
 
+## 🔌 Custom Endpoint Configuration (New!)
+
+The Gradio interface now supports **custom OpenAI-compatible endpoints** with automatic model discovery:
+
+### Quick Setup
+
+1. **Launch the interface**: `python gradio_app.py`
+2. **Select Provider**: Choose "custom" from the Provider dropdown
+3. **Configure Endpoint**: Enter your endpoint URL and API key
+4. **Fetch Models**: Click "🔄 Fetch Models" to auto-discover available models
+5. **Start Research**: Select a model and begin your research
+
+### Supported Endpoints
+
+The custom endpoint feature works with any OpenAI-compatible API:
+
+| Service | Default Endpoint | API Key |
+|---------|-----------------|---------|
+| **Ollama** | `http://localhost:11434/v1` | `dummy-key` |
+| **vLLM** | `http://localhost:8000/v1` | `dummy-key` |
+| **LM Studio** | `http://localhost:1234/v1` | `dummy-key` |
+| **LocalAI** | `http://localhost:8080/v1` | `dummy-key` |
+| **text-generation-webui** | `http://localhost:5000/v1` | `dummy-key` |
+| **Custom Server** | Your URL | Your key |
+
+### Step-by-Step Guide
+
+#### 1. Start Your Local LLM Server
+
+**For Ollama:**
+```bash
+# Start Ollama (usually auto-starts)
+ollama serve
+
+# Pull a model if needed
+ollama pull llama3.1:8b
+```
+
+**For vLLM:**
+```bash
+python -m vllm.entrypoints.openai.api_server \
+    --model meta-llama/Llama-3.1-8B-Instruct \
+    --port 8000
+```
+
+**For LM Studio:**
+- Launch LM Studio
+- Load a model
+- Start the local server from the "Local Server" tab
+
+#### 2. Configure in Gradio Interface
+
+1. Open the Gradio interface at `http://localhost:7860`
+2. In the Provider dropdown, select **"custom"**
+3. The "Custom Endpoint Configuration" section appears
+4. Enter your endpoint URL:
+   - For Ollama: `http://localhost:11434/v1`
+   - For vLLM: `http://localhost:8000/v1`
+   - For LM Studio: `http://localhost:1234/v1`
+5. Enter API key (use `dummy-key` for local endpoints)
+6. Click **"🔄 Fetch Models"**
+
+#### 3. Auto-Discover Models
+
+The interface will:
+- Connect to your endpoint
+- Query the `/v1/models` API
+- Display all available models in the Model dropdown
+- Show a status message (e.g., "✅ Found 5 models")
+
+#### 4. Start Research
+
+- Select your desired model from the dropdown
+- Enter your research query
+- Click "Start Research"
+
+### Troubleshooting Custom Endpoints
+
+#### "Connection failed - check if endpoint URL is correct"
+
+**Solution:**
+- Verify the endpoint URL is correct
+- Ensure the service is running: `curl http://localhost:11434/v1/models`
+- Check if the port is correct
+- Make sure URL ends with `/v1` (auto-added if missing)
+
+#### "Connection timeout - check if endpoint is accessible"
+
+**Solution:**
+- Check if your LLM server is running
+- Verify network connectivity
+- Try increasing timeout (currently 10 seconds)
+- Check firewall settings if using remote endpoint
+
+#### "No models found at endpoint"
+
+**Solution:**
+- Ensure models are loaded in your LLM server
+- For Ollama: Run `ollama list` to see available models
+- Check if the endpoint returns proper JSON format
+- Verify API key is correct (if required)
+
+#### "HTTP Error: 401" or "HTTP Error: 403"
+
+**Solution:**
+- Check if your API key is correct
+- Some endpoints require authentication even locally
+- Try with and without API key
+
+### Advanced Configuration
+
+#### Remote Endpoints
+
+You can connect to remote OpenAI-compatible servers:
+
+```
+Endpoint: https://your-server.com/v1
+API Key: your-actual-api-key
+```
+
+#### Environment Variables (Alternative)
+
+Instead of using the UI, you can pre-configure via `.env`:
+
+```bash
+LLM_PROVIDER=custom
+OPENAI_BASE_URL=http://localhost:11434/v1
+OPENAI_API_KEY=dummy-key
+LLM_MODEL=llama3.1:8b
+```
+
+Then the interface will use these defaults when you select "custom" provider.
+
+### Benefits of Custom Endpoints
+
+✅ **Complete Privacy**: All data stays on your machine  
+✅ **No API Costs**: Use your own hardware  
+✅ **Offline Operation**: Works without internet  
+✅ **Model Flexibility**: Use any model you want  
+✅ **Auto-Discovery**: No manual model configuration  
+✅ **Multiple Endpoints**: Switch between different servers easily  
+
 ## 🎨 Interface Features
 
 ### Main Research Tab
@@ -83,8 +225,12 @@ The primary interface for conducting deep research:
 #### Input Section
 - **Research Query**: Enter your research question or topic
 - **File Upload**: Upload documents (PDF, TXT, DOCX, CSV, JSON) to include in research context
-- **Provider Selection**: Choose from OpenAI, Anthropic, Google, Groq, or SambaNova
+- **Provider Selection**: Choose from OpenAI, Anthropic, Google, Groq, SambaNova, or **Custom**
 - **Model Selection**: Select specific model (options update based on provider)
+- **Custom Endpoint Configuration** (when "custom" selected):
+  - **API Endpoint**: URL of your OpenAI-compatible server
+  - **API Key**: Authentication key (use "dummy-key" for local)
+  - **Fetch Models**: Auto-discover available models from endpoint
 - **Max Research Loops**: Control research depth (1-20 loops)
   - Lower values (1-3): Quick research
   - Medium values (5-10): Balanced research
@@ -147,6 +293,20 @@ View current configuration:
 3. Set max loops to 15-20
 4. Optionally enable "Steering" for guidance
 5. Click "Start Research"
+
+### Research with Custom Endpoint (Local LLM)
+
+1. Start your local LLM server (e.g., Ollama)
+2. Select "custom" from Provider dropdown
+3. Enter endpoint: `http://localhost:11434/v1`
+4. Enter API key: `dummy-key`
+5. Click "🔄 Fetch Models"
+6. Select model from auto-populated list (e.g., `llama3.1:8b`)
+7. Enter your research query
+8. Click "Start Research"
+9. Research runs completely offline using your local model
+
+**Benefits**: Complete privacy, no API costs, works offline
 
 ## 🔧 Advanced Features
 
