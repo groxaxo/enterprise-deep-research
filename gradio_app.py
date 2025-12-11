@@ -30,6 +30,7 @@ load_dotenv()
 
 # Import Gradio
 import gradio as gr
+import requests
 
 # Import research services
 from services.research import ResearchService
@@ -54,7 +55,66 @@ PROVIDERS = {
     "google": ["gemini-2.5-pro", "gemini-1.5-pro-latest", "gemini-1.5-flash-latest"],
     "groq": ["deepseek-r1-distill-llama-70b", "llama-3.3-70b-versatile", "llama3-70b-8192"],
     "sambanova": ["DeepSeek-V3-0324"],
+    "custom": []  # Custom endpoints will populate this dynamically
 }
+
+
+def fetch_models_from_endpoint(base_url: str, api_key: str = "dummy-key") -> Tuple[List[str], str]:
+    """
+    Fetch available models from a custom OpenAI-compatible endpoint.
+    
+    Args:
+        base_url: The base URL of the OpenAI-compatible API (e.g., http://localhost:11434/v1)
+        api_key: API key for authentication (default: "dummy-key" for local endpoints)
+        
+    Returns:
+        Tuple of (list of model IDs, status message)
+    """
+    try:
+        # Ensure base_url ends with /v1
+        if not base_url.endswith('/v1'):
+            if base_url.endswith('/'):
+                base_url = base_url + 'v1'
+            else:
+                base_url = base_url + '/v1'
+        
+        # Construct the models endpoint
+        models_url = f"{base_url}/models"
+        
+        # Set up headers
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        }
+        
+        # Fetch models with timeout
+        response = requests.get(models_url, headers=headers, timeout=10)
+        response.raise_for_status()
+        
+        data = response.json()
+        
+        # Extract model IDs from the response
+        models = []
+        if "data" in data:
+            models = [model.get("id", "") for model in data["data"] if model.get("id")]
+        elif "models" in data:
+            # Alternative format
+            models = [model.get("id", "") for model in data["models"] if model.get("id")]
+        
+        if models:
+            return models, f"✅ Found {len(models)} models"
+        else:
+            return [], "⚠️ No models found at endpoint"
+            
+    except requests.exceptions.Timeout:
+        return [], "❌ Connection timeout - check if endpoint is accessible"
+    except requests.exceptions.ConnectionError:
+        return [], "❌ Connection failed - check if endpoint URL is correct"
+    except requests.exceptions.HTTPError as e:
+        return [], f"❌ HTTP Error: {e.response.status_code}"
+    except Exception as e:
+        logger.error(f"Error fetching models: {e}", exc_info=True)
+        return [], f"❌ Error: {str(e)}"
 
 
 def get_models_for_provider(provider: str) -> List[str]:
@@ -70,6 +130,8 @@ async def conduct_research(
     extra_effort: bool,
     minimum_effort: bool,
     enable_steering: bool,
+    custom_endpoint: str = "",
+    custom_api_key: str = "",
     uploaded_files: Optional[List] = None,
     progress=gr.Progress()
 ) -> Tuple[str, str, str]:
@@ -84,6 +146,8 @@ async def conduct_research(
         extra_effort: Enable extra effort mode
         minimum_effort: Enable minimum effort mode (1 loop)
         enable_steering: Enable real-time steering
+        custom_endpoint: Custom OpenAI-compatible endpoint URL
+        custom_api_key: API key for custom endpoint
         uploaded_files: List of uploaded file paths
         progress: Gradio progress tracker
         
@@ -114,9 +178,15 @@ async def conduct_research(
                 uploaded_data_content = "\n\n".join(file_contents)
         
         # Set environment variables for this research session
-        os.environ["LLM_PROVIDER"] = provider
+        os.environ["LLM_PROVIDER"] = provider if provider != "custom" else "openai"
         os.environ["LLM_MODEL"] = model
         os.environ["MAX_WEB_RESEARCH_LOOPS"] = str(max_loops)
+        
+        # Handle custom endpoint configuration
+        if provider == "custom" and custom_endpoint:
+            os.environ["OPENAI_BASE_URL"] = custom_endpoint
+            os.environ["OPENAI_API_KEY"] = custom_api_key if custom_api_key else "dummy-key"
+            logger.info(f"Using custom endpoint: {custom_endpoint}")
         
         progress(0.3, desc="Starting deep research...")
         
@@ -125,7 +195,7 @@ async def conduct_research(
             query=query,
             extra_effort=extra_effort,
             minimum_effort=minimum_effort,
-            provider=provider,
+            provider=provider if provider != "custom" else "openai",
             model=model,
             streaming=False,
             uploaded_data_content=uploaded_data_content,
@@ -237,6 +307,36 @@ def create_gradio_interface():
                                 interactive=True
                             )
                         
+                        # Custom endpoint configuration (visible only when "custom" provider is selected)
+                        with gr.Group(visible=False) as custom_endpoint_group:
+                            gr.Markdown("#### 🔌 Custom Endpoint Configuration")
+                            custom_endpoint_input = gr.Textbox(
+                                label="Custom API Endpoint",
+                                placeholder="e.g., http://localhost:11434/v1",
+                                info="OpenAI-compatible endpoint URL (Ollama, vLLM, etc.)",
+                                value=os.environ.get("OPENAI_BASE_URL", "")
+                            )
+                            
+                            with gr.Row():
+                                custom_api_key_input = gr.Textbox(
+                                    label="API Key (Optional)",
+                                    placeholder="dummy-key",
+                                    type="password",
+                                    info="Leave as 'dummy-key' for local endpoints",
+                                    value="dummy-key"
+                                )
+                                fetch_models_btn = gr.Button(
+                                    "🔄 Fetch Models",
+                                    size="sm"
+                                )
+                            
+                            custom_models_status = gr.Textbox(
+                                label="Status",
+                                value="",
+                                interactive=False,
+                                lines=1
+                            )
+                        
                         max_loops_slider = gr.Slider(
                             minimum=1,
                             maximum=20,
@@ -308,12 +408,37 @@ def create_gradio_interface():
                 def update_models(provider):
                     """Update model dropdown when provider changes."""
                     models = get_models_for_provider(provider)
-                    return gr.Dropdown(choices=models, value=models[0])
+                    # Show/hide custom endpoint configuration
+                    show_custom = provider == "custom"
+                    if models:
+                        return gr.Dropdown(choices=models, value=models[0] if models else ""), gr.Group(visible=show_custom)
+                    else:
+                        return gr.Dropdown(choices=["No models available"], value=""), gr.Group(visible=show_custom)
                 
                 provider_dropdown.change(
                     fn=update_models,
                     inputs=[provider_dropdown],
-                    outputs=[model_dropdown]
+                    outputs=[model_dropdown, custom_endpoint_group]
+                )
+                
+                def fetch_custom_models(endpoint, api_key):
+                    """Fetch models from custom endpoint and update the model dropdown."""
+                    if not endpoint:
+                        return gr.Dropdown(choices=["No models available"], value=""), "❌ Please enter an endpoint URL"
+                    
+                    models, status = fetch_models_from_endpoint(endpoint, api_key)
+                    
+                    if models:
+                        # Update the global PROVIDERS dict
+                        PROVIDERS["custom"] = models
+                        return gr.Dropdown(choices=models, value=models[0]), status
+                    else:
+                        return gr.Dropdown(choices=["No models available"], value=""), status
+                
+                fetch_models_btn.click(
+                    fn=fetch_custom_models,
+                    inputs=[custom_endpoint_input, custom_api_key_input],
+                    outputs=[model_dropdown, custom_models_status]
                 )
                 
                 def run_research_wrapper(*args):
@@ -343,6 +468,8 @@ def create_gradio_interface():
                         extra_effort_check,
                         minimum_effort_check,
                         steering_check,
+                        custom_endpoint_input,
+                        custom_api_key_input,
                         file_upload
                     ],
                     outputs=[report_output, sources_output, status_output]
@@ -402,7 +529,9 @@ def create_gradio_interface():
                     ### Enterprise Integration
                     - MCP (Model Context Protocol) based tool ecosystem
                     - Support for multiple LLM providers (OpenAI, Anthropic, Google, Groq, SambaNova)
-                    - Local deployment support (Ollama, vLLM)
+                    - **Custom Endpoint Support**: Connect to any OpenAI-compatible API (Ollama, vLLM, LM Studio, etc.)
+                    - **Auto-Model Discovery**: Automatically fetch available models from custom endpoints
+                    - Local deployment support for complete privacy
                     - Database integration for text-to-SQL capabilities
                     
                     ### Real-time Capabilities
@@ -430,7 +559,23 @@ def create_gradio_interface():
                     | Google | gemini-2.5-pro | GOOGLE_CLOUD_PROJECT |
                     | Groq | deepseek-r1-distill-llama-70b | GROQ_API_KEY |
                     | SambaNova | DeepSeek-V3-0324 | SAMBANOVA_API_KEY |
-                    | Local (Ollama/vLLM) | User-defined | OPENAI_BASE_URL |
+                    | **Custom** | **Auto-detected** | **User-configured** |
+                    
+                    ### Custom Endpoint Configuration
+                    
+                    The **Custom** provider allows you to connect to any OpenAI-compatible API endpoint:
+                    
+                    1. Select "custom" from the Provider dropdown
+                    2. Enter your endpoint URL (e.g., `http://localhost:11434/v1` for Ollama)
+                    3. Enter API key (use `dummy-key` for local endpoints)
+                    4. Click "🔄 Fetch Models" to auto-discover available models
+                    5. Select your model and start researching
+                    
+                    **Supported Endpoints:**
+                    - Ollama (`http://localhost:11434/v1`)
+                    - vLLM (`http://localhost:8000/v1`)
+                    - LM Studio (`http://localhost:1234/v1`)
+                    - LocalAI, text-generation-webui, and other OpenAI-compatible servers
                     
                     ### Environment Variables
                     
